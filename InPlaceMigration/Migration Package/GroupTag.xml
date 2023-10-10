@@ -3,12 +3,12 @@
   <RegistrationInfo>
     <Date>2022-07-05T16:49:29.8738301</Date>
     <Author>Steve Weiner</Author>
-    <URI>\RestoreProfile</URI>
+    <URI>\GroupTag</URI>
   </RegistrationInfo>
   <Triggers>
     <LogonTrigger>
       <Enabled>true</Enabled>
-      <Delay>PT30S</Delay>
+       <Delay>PT15M</Delay>
     </LogonTrigger>
   </Triggers>
   <Principals>
@@ -39,7 +39,7 @@
   <Actions Context="Author">
     <Exec>
       <Command>C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe</Command>
-      <Arguments>-executionpolicy bypass -WindowStyle Hidden -file "C:\ProgramData\IntuneMigration\RestoreProfile.ps1"</Arguments>
+      <Arguments>-executionpolicy bypass -WindowStyle Hidden -file "C:\ProgramData\IntuneMigration\GroupTag.ps1"</Arguments>
     </Exec>
   </Actions>
 </Task>

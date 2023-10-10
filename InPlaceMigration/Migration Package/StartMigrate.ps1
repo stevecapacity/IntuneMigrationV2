@@ -62,9 +62,9 @@ Write-Host ""
 
 #SOURCE TENANT Application Registration Auth 
 Write-Host "Authenticating to MS Graph..."
-$clientId = "<CLIENT ID>"
-$clientSecret = "<CLIENT SECRET>"
-$tenant = "TenantA.com"
+$clientId = "0e7bead2-03de-43f0-a854-4819ac542576"
+$clientSecret = "fl_8Q~bhBe8YxUrcJRsM5bfHOdxDXG.LXxHSvdxb"
+$tenant = "rubixdev.com"
 
 $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
 $headers.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -118,6 +118,7 @@ $locations = @(
 	"Documents"
 	"Desktop"
 	"Pictures"
+	"Downloads"
 )
 
 $xmlLocations = @()
@@ -272,7 +273,7 @@ Write-Host "Removed previous Intune enrollment"
 #### STEP 7: LEAVE AZURE AD AND INTUNE ####
 <# =================================================================================================#>
 
-#Remove device from Current Azure AD and Intune environment
+# Remove device from Current Azure AD and Intune environment
 
 Write-Host "Leaving the $($tenant) Azure AD and Intune environment"
 Start-Process "C:\Windows\sysnative\dsregcmd.exe" -ArgumentList "/leave"
@@ -282,15 +283,11 @@ $dsregStatus = (dsregcmd /status | Select-String "DomainJoined")
 $dsregString = $dsregStatus.ToString()
 $domainJoin = $dsregString.Split(":")[1].Trim()
 
-# Credentials to remove form domain
-$password = ConvertTo-SecureString "MyPlainTextPassword" -AsPlainText -Force
-$cred = New-Object System.Management.Automation.PSCredential ("domain\username", $password)
-
 # If machine is domain joined, remove from domain
 if($domainJoin -eq "YES"){
 	Write-Host "Computer $($env:COMPUTERNAME) is Domain Joined.  Attempting to remove..."
 	try {
-		Remove-Computer -UnjoinDomainCredential $cred -Force 
+		Remove-Computer -Force
 		Write-Host "Removed computer $($env:COMPUTERNAME) from $($tenant)"
 	}
 	catch {

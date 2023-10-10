@@ -1,5 +1,6 @@
 # Start and append post-migration log file
 Start-Transcript -Append "C:\ProgramData\IntuneMigration\post-migration.log" -Verbose
+Write-Host "BEGIN LOGGING FOR GROUPTAG..."
 
 # Add Group Tag from Autopilot device in Tenant A to Azure AD object in Tenant B
 <#PERMISSIONS NEEDED FOR APP REG:
@@ -57,6 +58,7 @@ Write-Host "Intune object ID is $($intuneObject)"
 $aadDeviceId = $intuneObject.value.azureADDeviceId
 Write-Host "Getting Azure AD object..."
 
+
 $aadObject = Invoke-RestMethod -Method GET -Uri "https://graph.microsoft.com/beta/devices?`$filter=deviceId eq '$($aadDeviceId)'" -Headers $headers
 $aadObjectId = $aadObject.value.id
 Write-Host "Azure AD object ID is $($aadObjectId)"
@@ -83,4 +85,5 @@ Start-Sleep -Seconds 3
 Disable-ScheduledTask -TaskName "GroupTag"
 Write-Host "Disabled GroupTag scheduled task"
 
+Write-Host "END LOGGING FOR GROUPTAG..."
 Stop-Transcript

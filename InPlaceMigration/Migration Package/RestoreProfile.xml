@@ -1,14 +1,15 @@
 <?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <Date>2022-09-05T11:19:08.1328042</Date>
+    <Date>2022-07-05T16:49:29.8738301</Date>
     <Author>Steve Weiner</Author>
-    <URI>\MiddleBoot</URI>
+    <URI>\Restore Profile</URI>
   </RegistrationInfo>
   <Triggers>
-    <BootTrigger>
+    <LogonTrigger>
       <Enabled>true</Enabled>
-    </BootTrigger>
+      <Delay>PT5M</Delay>
+    </LogonTrigger>
   </Triggers>
   <Principals>
     <Principal id="Author">
@@ -38,7 +39,7 @@
   <Actions Context="Author">
     <Exec>
       <Command>C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe</Command>
-      <Arguments>-executionpolicy bypass -WindowStyle Hidden -file "C:\ProgramData\IntuneMigration\MiddleBoot.ps1"</Arguments>
+      <Arguments>-executionpolicy bypass -WindowStyle Hidden -file "C:\ProgramData\IntuneMigration\RestoreProfile.ps1"</Arguments>
     </Exec>
   </Actions>
 </Task>

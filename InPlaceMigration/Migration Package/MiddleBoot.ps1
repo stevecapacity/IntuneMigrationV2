@@ -1,6 +1,8 @@
 # Create and start post-migration log file
 $postMigrationLog = "C:\ProgramData\IntuneMigration\post-migration.log"
 Start-Transcript -Path $postMigrationLog -Verbose
+Write-Host "BEGIN LOGGING MIDDLEBOOT..."
+
 
 # Rename the Tenant A user profile, disable the MiddleBoot task, and reboot
 
@@ -48,5 +50,6 @@ Start-Sleep -Seconds 2
 # Reboot in 30 seconds
 shutdown -r -t 30
 
+Write-Host "END LOGGING FOR MIDDLEBOOT..."
 Stop-Transcript
 

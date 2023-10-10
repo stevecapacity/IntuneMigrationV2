@@ -1,6 +1,7 @@
 # Start and append post-migration log file
 $postMigrationLog = "C:\ProgramData\IntuneMigration\post-migration.log"
 Start-Transcript -Append $postMigrationLog -Verbose
+Write-Host "BEGIN LOGGING FOR RESTOREPROFILE..."
 
 $ErrorActionPreference = 'SilentlyContinue'
 # Check if migrating data
@@ -54,4 +55,5 @@ Write-Host "Disabled RestoreProfile scheduled task"
 Write-Host "Rebooting machine in 30 seconds"
 Shutdown -r -t 30
 
+Write-Host "END LOGGING FOR RESTOREPROFILE..."
 Stop-Transcript

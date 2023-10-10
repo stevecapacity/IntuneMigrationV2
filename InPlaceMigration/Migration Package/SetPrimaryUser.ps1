@@ -2,6 +2,7 @@
 Start-Transcript -Append "C:\ProgramData\IntuneMigration\post-migration.log" -Verbose
 
 $ErrorActionPreference = 'SilentlyContinue'
+Write-Host "BEGIN LOGGING FOR SETPRIMARYUSER..."
 
 # Update Intune device primary user with current active user
 <#PERMISSIONS NEEDED FOR APP REG:
@@ -72,4 +73,5 @@ Start-Sleep -Seconds 3
 Disable-ScheduledTask -TaskName "SetPrimaryUser"
 Write-Host "Disabled SetPrimaryUser scheduled task"
 
+Write-Host "END LOGGING FOR SETPRIMARYUSER..."
 Stop-Transcript
