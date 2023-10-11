@@ -1,29 +1,41 @@
 # Start and append post-migration log file
-$postMigrationLog = "C:\ProgramData\IntuneMigration\post-migration.log"
+$localPath = "C:\ProgramData\IntuneMigration"
+
+$postMigrationLog = "$($localPath)\post-migration.log"
 Start-Transcript -Append $postMigrationLog -Verbose
 Write-Host "BEGIN LOGGING FOR RESTOREPROFILE..."
 
 $ErrorActionPreference = 'SilentlyContinue'
 # Check if migrating data
-Write-Host "Checking for Data Migration Flag..."
-$dataMigrationFlag = "C:\ProgramData\IntuneMigration\MIGRATE.txt"
+Write-Host "Checking migration method..."
 
-if(Test-Path $dataMigrationFlag)
+# Get XML values from local xml content
+[xml]$xmlFile = Get-Content -Path "$($localPath)\config.xml"
+$config = $xmlFile.Config
+$migrateMethod = $config.MigrateMethod
+$locations = $config.Locations.Location
+
+# Get current username
+$activeUsername = (Get-WMIObject Win32_ComputerSystem | Select-Object username).username
+$currentUser = $activeUsername -replace '.*\\'
+
+# Check for temp data path
+$tempDataPath = "$($localPath)\TempData"
+Write-Host "Checking for $tempDataPath..."
+if(!(Test-Path $tempDataPath))
 {
-	Write-Host "Data Migration Flag Found"
-	Write-Host "Begin data restore..."
-	# Get current active user profile
-	$activeUsername = (Get-WMIObject Win32_ComputerSystem | Select-Object username).username
-	$currentUser = $activeUsername -replace '.*\\'
+	Write-Host "Creating $($tempDataPath)"
+	mkdir $tempDataPath
+}
+else
+{
+	Write-Host "$($tempDataPath) exists"
+}
 
-	# Get backed up locations
-	[xml]$memSettings = Get-Content "C:\ProgramData\IntuneMigration\MEM_Settings.xml"
-	$memConfig = $memSettings.Config
-	$dataLocations = $memConfig.Locations
-
-	$locations = $dataLocations.Location
-
-	# Restore user data
+# Migrate data based on MigrateMethod data point
+if($migrateMethod -eq "local")
+{
+	Write-Host "Migration method is local.  Migrating from Public directory..."
 	foreach($location in $locations)
 	{
 		$userPath = "C:\Users\$($currentUser)\$($location)"
@@ -31,10 +43,61 @@ if(Test-Path $dataMigrationFlag)
 		Write-Host "Initiating data restore of $($location)"
 		robocopy $publicPath $userPath /E /ZB /R:0 /W:0 /V /XJ /FFT
 	}
+	Write-Host "$($currentUser) data is restored"
 }
-else 
+elseif ($migrateMethod -eq "blob") 
 {
-	Write-Host "Data Migration flag not found.  Data will not be restored"
+	Write-Host "Migration method is blob storage.  Connecting to AzBlob storage account..."
+	$storageAccountName = "<STORAGE ACCOUNT NAME>"
+	$storageAccountKey = "<STORAGE ACCOUNT KEY>"
+	$context = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+	$containerName = $config.GUID
+	foreach($location in $locations)
+	{
+		if($location -match '[^a-zA-Z0-9]')
+		{
+			$blobName = $location
+			$blobName = $blobName -replace '\\'
+			$blob = "$($blobName).zip"	
+			$userPath = "C:\Users\$($currentUser)\$($location)"
+			$blobDownload = @{
+				Blob = $blob
+				Container = $containerName
+				Destination = $tempDataPath
+				Context = $context
+			}
+			Get-AzStorageBlobContent @blobDownload | Out-Null
+			$publicPath = "C:\Users\Public\Temp"
+			if(!(Test-Path $publicPath))
+			{
+				mkdir $publicPath
+			}
+			Expand-Archive -Path "$($tempDataPath)\$($blob)" -DestinationPath $publicPath -Force | Out-Null
+			Write-Host "Expanded $($tempDataPath)\$($blob) to $($publicPath) folder"
+			$fullPublicPath = "$($publicPath)\$($blobName)"
+			robocopy $fullPublicPath $userPath /E /ZB /R:0 /W:0 /V /XJ /FFT
+			Write-Host "Coppied contents of $($fullPublicPath) to $($userPath)"
+		}
+		else 
+		{
+			$blobName = "$($location).zip"
+			$userPath = "C:\Users\$($currentUser)"
+			$blobDownload = @{
+				Blob = $blobName
+				Container = $containerName
+				Destination = $tempDataPath
+				Context = $context
+			}
+			Get-AzStorageBlobContent @blobDownload | Out-Null
+			Expand-Archive -Path "$($tempDataPath)\$($blobName)" -DestinationPath $userPath -Force | Out-Null
+			Write-Host "Expanded $($tempDataPath)\$($blobName) to $($userPath) folder"
+		}
+	}
+	Write-Host "User data restored from blob storage"
+}
+else
+{
+	Write-Host "User data will not be migrated"
 }
 
 Start-Sleep -Seconds 3

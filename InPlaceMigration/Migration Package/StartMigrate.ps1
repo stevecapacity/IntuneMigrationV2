@@ -12,14 +12,14 @@ DeviceManagementServiceConfig.ReadWrite.All
 $ErrorActionPreference = 'SilentlyContinue'
 
 <# =================================================================================================#>
-#### STEP 1: LOCAL FILES AND LOGGING ####
+#### LOCAL FILES AND LOGGING ####
 <# =================================================================================================#>
 
 #Copy necessary files from intunewin package to local PC
-$resourcePath = "C:\ProgramData\IntuneMigration"
+$localPath = "C:\ProgramData\IntuneMigration"
 
-if (!(Test-Path $resourcePath)) {
-	mkdir $resourcePath
+if (!(Test-Path $localPath)) {
+	mkdir $localPath
 }
 
 $packageFiles = @(
@@ -39,16 +39,16 @@ $packageFiles = @(
 )
 
 foreach ($file in $packageFiles) {
-	Copy-Item -Path "$($PSScriptRoot)\$($file)" -Destination "$($resourcePath)" -Force -Verbose
+	Copy-Item -Path "$($PSScriptRoot)\$($file)" -Destination "$($localPath)" -Force -Verbose
 }
 
 #Set detection flag for Intune install
-$installFlag = "$($resourcePath)\Installed.txt"
+$installFlag = "$($localPath)\Installed.txt"
 New-Item $installFlag -Force
 Set-Content -Path $($installFlag) -Value "Package Installed"
 
 #Start logging of script
-Start-Transcript -Path "$($resourcePath)\migration.log" -Verbose
+Start-Transcript -Path "$($localPath)\migration.log" -Verbose
 
 # Verify context is 
 Write-Host "Running as..."
@@ -57,14 +57,14 @@ Write-Host ""
 
 
 <# =================================================================================================#>
-#### STEP 2: AUTHENTICATE TO MS GRAPH ####
+#### AUTHENTICATE TO MS GRAPH AND BLOB STORAGE####
 <# =================================================================================================#>
 
 #SOURCE TENANT Application Registration Auth 
 Write-Host "Authenticating to MS Graph..."
-$clientId = "0e7bead2-03de-43f0-a854-4819ac542576"
-$clientSecret = "fl_8Q~bhBe8YxUrcJRsM5bfHOdxDXG.LXxHSvdxb"
-$tenant = "rubixdev.com"
+$clientId = "<CLIENT ID>"
+$clientSecret = "<CLIENT SECRET>"
+$tenant = "<TENANT.COM>"
 
 $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
 $headers.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -84,69 +84,17 @@ $headers.Add("Content-Type", "application/json")
 Write-Host "MS Graph Authenticated"
 
 <# =================================================================================================#>
-#### STEP 3: GET CURRENT STATE INFO ####
+#### IMPORT XML ####
 <# =================================================================================================#>
-#Gather Autopilot and Intune Object details
+[xml]$xmlFile = Get-Content -Path "$($localPath)\config.xml"
 
-Write-Host "Gathering device info..."
-$serialNumber = Get-WmiObject -Class Win32_Bios | Select-Object -ExpandProperty serialnumber
-Write-Host "Serial number is $($serialNumber)"
+$config = $xmlFile.Config
 
-$autopilotObject = Invoke-RestMethod -Method Get -uri "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotDeviceIdentities?`$filter=contains(serialNumber,'$($serialNumber)')" -headers $headers
-$intuneObject = Invoke-RestMethod -Method Get -uri "https://graph.microsoft.com/beta/deviceManagement/managedDevices?`$filter=contains(serialNumber,'$($serialNumber)')" -headers $headers
-
-$autopilotID = $autopilotObject.value.id
-Write-Host "Autopilot ID is $($autopilotID)"
-$intuneID = $intuneObject.value.id
-Write-Host "Intune ID is $($intuneID)"
-$groupTag = $autopilotObject.value.groupTag
-Write-Host "Current Autopilot GroupTag is $($groupTag)."
-
-<#===============================================================================================#>
-# Get active username
-$activeUsername = (Get-WMIObject Win32_ComputerSystem | Select-Object username).username
-$user = $activeUsername -replace '.*\\'
-Write-Host "Current active user is $($user)"
-
-<#===============================================================================================#>
-# User paths to be migrated
-# Paths can be added or removed from this array as needed without affecting the migration.  Note that more paths will mean more files will mean larger data sizes...
-
-$locations = @(
-	"AppData\Local"
-	"AppData\Roaming"
-	"Documents"
-	"Desktop"
-	"Pictures"
-	"Downloads"
-)
-
-$xmlLocations = @()
-
-foreach($location in $locations)
-{
-	$xmlLocations += "<Location>$location</Location>`n"
-}
-
-<#===============================================================================================#>
-# Write data to local XML
-$xmlString = @"
-<Config>
-<GroupTag>$groupTag</GroupTag>
-<User>$user</User>
-<SerialNumber>$serialNumber</SerialNumber>
-<Locations>
-$xmlLocations</Locations>
-</Config>
-"@
-
-$xmlPath = "$($resourcePath)\MEM_Settings.xml"
-New-Item $xmlPath -Force
-Set-Content -Path $xmlPath -Value $xmlString
-Write-Host "Setting local content to $($xmlPath)"
+$intuneID = $config.IntuneID
+$autopilotID = $config.AutopilotID
 
 <# =================================================================================================#>
-#### STEP 4: SET REQUIRED POLICY ####
+#### SET REQUIRED POLICY ####
 <# =================================================================================================#>
 # Ensure Microsoft Account creation policy is enabled
 
@@ -174,62 +122,54 @@ try {
 catch {
 	Write-Host "Failed to enable policy"
 }
-
 <# =================================================================================================#>
-#### STEP 5: USER DATA MIGRATION ####
+#### USER DATA MIGRATION ####
 <# =================================================================================================#>
+Write-Host "Checking migration method..."
 
-# Check local user data size and available disk space
-$totalProfileSize = 0
+$migrateMethod = $config.MigrateMethod
+$locations = $config.Locations.Location
 
-foreach($location in $locations)
+if($migrateMethod -eq "local")
 {
-	$size = (Get-ChildItem "C:\Users\$($user)\$($location)" -Recurse | Measure-Object Length -Sum).sum
-	$totalProfileSize += $size
-	$sizeGB = "{0:N2} Gb" -f ($size/ 1Gb)
-	Write-Host "C:\Users\$($user)\$($location) size is $($sizeGB)"
-}
-
-$totalProfileSizeGB = "{0:N2} GB" -f ($totalProfileSize/ 1Gb)
-Write-Host "The size of $($user) user data is $($totalProfileSizeGB)."
-
-$diskSize = Get-Volume -DriveLetter C | Select-Object SizeRemaining -ExpandProperty SizeRemaining
-$diskSizeGB = "{0:N2} GB" -f ($diskSize/ 1Gb)
-Write-Host "There is $($diskSizeGB) of free space available on the PC."
-
-$neededSpace = $totalProfileSize * 3
-$neededSpaceGB = "{0:N2} GB" -f ($neededSpace/ 1Gb)
-Write-Host "$($neededSpaceGB) is required to transfer local user data."
-
-<#===============================================================================================#>
-# If disk space available, tranfer data.
-
-if($diskSize -gt $neededSpace)
-{
-    Write-Host "$($diskSizeGB) of free space is sufficient to transfer $($totalProfileSizeGB) of local user data.  Begin transfer..." -ForegroundColor Green
-	
+	Write-Host "Migration method is local.  Verifying staged content in Public folder..."
 	foreach($location in $locations)
 	{
-		$userPath = "C:\Users\$($user)\$($location)"
 		$publicPath = "C:\Users\Public\Temp\$($location)"
-		if(!(Test-Path $publicPath))
+		if(Test-Path $publicPath)
 		{
-			mkdir $publicPath
+			Write-Host "$($publicPath) is staged and ready for migration"
 		}
-		Write-Host "Initiating backup of $($location)"
-		robocopy $userPath $publicPath /E /ZB /R:0 /W:0 /V /XJ /FFT
+		else
+		{
+			Write-Host "$($publicPath) is not found"
+		}
 	}
-	New-Item -Path $($resourcePath) -Name "MIGRATE.txt"
+}
+elseif ($migrateMethod -eq "blob") 
+{
+	Import-Module Az.Storage
+	$storageAccountName = "<STORAGE ACCOUNT NAME>"
+	$storageAccountKey = "<STORAGE ACCOUNT KEY>"
+	$context = New-AzStorageContext -StorageAccountName $storageAccountName -StorageAccountKey $storageAccountKey
+	$blobContainer = $config.GUID
+	$blobExists = Get-AzStorageContainer -Context $context | Where-Object {$_.Name -eq "$($blobContainer)"}
+	if($blobExists -ne $null)
+	{
+		Write-Host "Blob storage is ready for migration"
+	}
+	else
+	{
+		Write-Host "Blob storage is not ready."
+	} 
 }
 else
 {
-    Write-Host "$($diskSizeGB) is not sufficient to transfer $($totalProfileSizeGB) of local user data.  Consider backingup $($user) data to external storage." -ForegroundColor Red
+	Write-Host "User data will not be migrated"
 }
 
-
-
 <# =================================================================================================#>
-#### STEP 6: REMOVE PREVIOUS ENROLLMENT ARTIFICATS ####
+#### REMOVE PREVIOUS ENROLLMENT ARTIFICATS ####
 <# =================================================================================================#>
 #Remove previous MDM enrollment settings from registry
 
@@ -270,7 +210,7 @@ else {
 Write-Host "Removed previous Intune enrollment"
 
 <# =================================================================================================#>
-#### STEP 7: LEAVE AZURE AD AND INTUNE ####
+#### LEAVE AZURE AD AND INTUNE ####
 <# =================================================================================================#>
 
 # Remove device from Current Azure AD and Intune environment
@@ -285,9 +225,12 @@ $domainJoin = $dsregString.Split(":")[1].Trim()
 
 # If machine is domain joined, remove from domain
 if($domainJoin -eq "YES"){
+	$password = ConvertTo-SecureString "MyPlainTextPassword" -AsPlainText -Force
+	$cred = New-Object System.Management.Automation.PSCredential ("domain\username", $password)
+
 	Write-Host "Computer $($env:COMPUTERNAME) is Domain Joined.  Attempting to remove..."
 	try {
-		Remove-Computer -Force
+		Remove-Computer -UnjoinDomainCredential $cred -Force
 		Write-Host "Removed computer $($env:COMPUTERNAME) from $($tenant)"
 	}
 	catch {
@@ -300,7 +243,7 @@ if($domainJoin -eq "YES"){
 Start-Sleep -Seconds 5
 
 <# =================================================================================================#>
-#### STEP 8: SET POST-MIGRATION TASKS ####
+#### SET POST-MIGRATION TASKS ####
 <# =================================================================================================#>
 
 #Create post-migration tasks
@@ -310,21 +253,21 @@ foreach($file in $packageFiles)
     if($file -match '.xml')
     {
         $name = $file.Split('.')[0]
-        schtasks /create /TN $($name) /xml "$($resourcePath)\$($file)" /f
+        schtasks /create /TN $($name) /xml "$($localPath)\$($file)" /f
 		Write-Host "Created $($name) task"
     }
 }
 
 <# =================================================================================================#>
-#### STEP 9: JOIN TENANT B ####
+#### JOIN TENANT B ####
 <# =================================================================================================#>
 
 #Run ppkg to enroll into new tenant
 Write-Host "Installing provisioning package for new Azure AD tenant"
-Install-ProvisioningPackage -PackagePath "$($resourcePath)\migrate.ppkg" -QuietInstall -Force
+Install-ProvisioningPackage -PackagePath "$($localPath)\migrate.ppkg" -QuietInstall -Force
 
 <# =================================================================================================#>
-#### STEP 10: DELETE OBJECTS FROM TENANT A AND REBOOT ####
+#### DELETE OBJECTS FROM TENANT A AND REBOOT ####
 <# =================================================================================================#>
 
 #Delete Intune and Autopilot objects from old tenant
