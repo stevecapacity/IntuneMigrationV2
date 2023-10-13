@@ -225,21 +225,27 @@ Write-Host "$($blobRequiredSpaceGB) of free disk space is required to migrate da
 # Attempt to backup data for migration
 $migrateMethod = ""
 # Try local backup 
+# Exclude AAD.BrokerPlugin folder
+
 if($freeSpace -gt $localRequiredSpace)
 {
     $migrateMethod = "local"
     Write-Host "$($freeSpaceGB) of free space is sufficient to transfer $($totalProfileSizeGB) of $($user) data locally."
     foreach($location in $locations)
-    {
-        $userLocation = "C:\Users\$($user)\$($location)"
-        $backupLocation = "C:\Users\Public\Temp\$($location)"
-        if(!(Test-Path $backupLocation))
+    {   
         {
-            mkdir $backupLocation
+            $userLocation = "C:\Users\$($user)\$($location)"
+            $backupLocation = "C:\Users\Public\Temp\$($location)"
+            $aadBrokerFolder = Get-ChildItem -Path "$($userLocation)\Packages" | Where-Object {$_.Name -match "Microsoft.AAD.BrokerPlugin_*"} | Select-Object -ExpandProperty Name
+            $aadBrokerPath = "$($userLocation)\Packages\$($aadBrokerFolder)"
+            if(!(Test-Path $backupLocation))
+            {
+                mkdir $backupLocation
+            }
+            Write-Host "Initiating backup of $($userLocation)"
+            robocopy $userLocation $backupLocation /E /ZB /R:0 /W:0 /V /XJ /FFT /XD $aadBrokerPath
+            Write-Host "$($userLocation) backed up to $($backupLocation)"    
         }
-        Write-Host "Initiating backup of $($userLocation)"
-        robocopy $userLocation $backupLocation /E /ZB /R:0 /W:0 /V /XJ /FFT
-        Write-Host "$($userLocation) backed up to $($backupLocation)"
     }
 }
 # Try blob backup
@@ -264,7 +270,7 @@ elseif($freeSpace -gt $blobRequiredSpace)
             {
                 mkdir $backupLocation
             }
-            robocopy $userLocation $backupLocation /E /ZB /R:0 /W:0 /V /XJ /FFT
+            robocopy $userLocation $backupLocation /E /ZB /R:0 /W:0 /V /XJ /FFT /XD $aadBrokerPath
             Write-Host "Coppied data from $($userLocation) to $($backupLocation)"
             Compress-Archive -path "$($backupLocation)" -DestinationPath "$($localPath)\$($blobName)" -Force
             Write-Host "Compressed $($backupLocation) to $($localPath)\$($blobName).zip"
