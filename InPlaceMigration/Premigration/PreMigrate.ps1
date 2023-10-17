@@ -130,6 +130,7 @@ $guid = (New-Guid).Guid
 $activeUsername = (Get-WMIObject Win32_ComputerSystem | Select-Object username).username
 $user = $activeUsername -replace '.*\\'
 Write-Host "Current active user is $($user)"
+$currentDomain = (Get-WmiObject Win32_ComputerSystem | Select-Object Domain).Domain
 
 # Get hostname
 $hostname = $env:COMPUTERNAME
@@ -310,6 +311,9 @@ $xmlString = @"
 <Hostname>$hostname</Hostname>
 <SerialNumber>$serialNumber</SerialNumber>
 <Username>$user</Username>
+<CurrentDomain>$currentDomain</CurrentDomain>
+<FreeDiskSpace>$freeSpaceGB</FreeDiskSpace>
+<TotalProfileSize>$totalProfileSizeGB</TotalProfileSize>
 <AutopilotID>$autopilotID</AutopilotID>
 <IntuneID>$intuneID</IntuneID>
 <GroupTag>$groupTag</GroupTag>
