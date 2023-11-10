@@ -228,6 +228,9 @@ $migrateMethod = ""
 # Try local backup 
 # Exclude AAD.BrokerPlugin folder
 
+$aadBrokerFolder = Get-ChildItem -Path "$($userLocation)\Packages" | Where-Object {$_.Name -match "Microsoft.AAD.BrokerPlugin_*"} | Select-Object -ExpandProperty Name
+$aadBrokerPath = "$($userLocation)\Packages\$($aadBrokerFolder)"
+
 if($freeSpace -gt $localRequiredSpace)
 {
     $migrateMethod = "local"
@@ -237,8 +240,6 @@ if($freeSpace -gt $localRequiredSpace)
         {
             $userLocation = "C:\Users\$($user)\$($location)"
             $backupLocation = "C:\Users\Public\Temp\$($location)"
-            $aadBrokerFolder = Get-ChildItem -Path "$($userLocation)\Packages" | Where-Object {$_.Name -match "Microsoft.AAD.BrokerPlugin_*"} | Select-Object -ExpandProperty Name
-            $aadBrokerPath = "$($userLocation)\Packages\$($aadBrokerFolder)"
             if(!(Test-Path $backupLocation))
             {
                 mkdir $backupLocation
