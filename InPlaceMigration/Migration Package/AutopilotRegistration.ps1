@@ -47,7 +47,7 @@ $ser = (Get-WmiObject win32_bios).SerialNumber
 if([string]::IsNullOrWhiteSpace($ser)) { $ser = $env:COMPUTERNAME}
 
 # Retrieve group tag info
-[xml]$memConfig = Get-Content "C:\ProgramData\IntuneMigration\MEM_Settings.xml"
+[xml]$memConfig = Get-Content "C:\ProgramData\IntuneMigration\config.xml"
 
 $tag = $memConfig.Config.GroupTag
 
