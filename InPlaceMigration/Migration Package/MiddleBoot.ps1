@@ -8,7 +8,7 @@ Write-Host "BEGIN LOGGING MIDDLEBOOT..."
 
 # Get Tenant A user profile directory name from XML file
 Write-Host "Getting Tenant A user profile name"
-[xml]$memSettings = Get-Content -Path "C:\ProgramData\IntuneMigration\MEM_Settings.xml"
+[xml]$memSettings = Get-Content -Path "C:\ProgramData\IntuneMigration\config.xml"
 $memConfig = $memSettings.Config
 $user = $memConfig.User
 Write-Host "Current user directory name is C:\Users\$($user)"
