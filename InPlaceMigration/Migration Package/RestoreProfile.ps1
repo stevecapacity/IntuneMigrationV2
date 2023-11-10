@@ -42,6 +42,7 @@ if($migrateMethod -eq "local")
 		$publicPath = "C:\Users\Public\Temp\$($location)"
 		Write-Host "Initiating data restore of $($location)"
 		robocopy $publicPath $userPath /E /ZB /R:0 /W:0 /V /XJ /FFT
+  		Remove-Item -Path $publicPath -Recurse -Force
 	}
 	Write-Host "$($currentUser) data is restored"
 }
@@ -77,6 +78,8 @@ elseif ($migrateMethod -eq "blob")
 			$fullPublicPath = "$($publicPath)\$($blobName)"
 			robocopy $fullPublicPath $userPath /E /ZB /R:0 /W:0 /V /XJ /FFT
 			Write-Host "Coppied contents of $($fullPublicPath) to $($userPath)"
+   			Remove-Item -Path "$($tempDataPath)\$($blob) -Recurse -Force
+      			Remove-Item -Path $fullPublicPath -Recures -Force
 		}
 		else 
 		{
@@ -91,6 +94,7 @@ elseif ($migrateMethod -eq "blob")
 			Get-AzStorageBlobContent @blobDownload | Out-Null
 			Expand-Archive -Path "$($tempDataPath)\$($blobName)" -DestinationPath $userPath -Force | Out-Null
 			Write-Host "Expanded $($tempDataPath)\$($blobName) to $($userPath) folder"
+   			Remove-Item -Path "$($tempDataPath)\$($blob) -Recurse -Force
 		}
 	}
 	Write-Host "User data restored from blob storage"
