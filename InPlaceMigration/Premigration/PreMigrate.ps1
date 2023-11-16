@@ -28,7 +28,8 @@ $ErrorActionPreference = 'SilentlyContinue'
 
 # Create local path for files and logging
 
-$localPath = "C:\ProgramData\IntuneMigration"
+$programData = $env:ALLUSERSPROFILE
+$localPath = "$($programData)\IntuneMigration"
 
 if(!(Test-Path $localPath))
 {
@@ -78,7 +79,7 @@ Write-Host "MS Graph Authenticated"
 
 # Install Az Storage module for blob
 Write-Host "Checking for NuGet Package Provider..."
-$nuget = Get-PackageProvider -Name NuGet
+$nuget = Get-PackageProvider -Name NuGet -ErrorAction Ignore
 
 if(-not($nuget))
 {
@@ -99,7 +100,7 @@ else
     Write-Host "Package Provider NuGet already installed"
 }
 
-$azStorage = Get-InstalledModule -Name Az.Storage
+$azStorage = Get-InstalledModule -Name Az.Storage -ErrorAction Ignore
 
 if(-not($azStorage))
 {

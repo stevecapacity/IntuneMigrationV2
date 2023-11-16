@@ -9,7 +9,9 @@ if ("$env:PROCESSOR_ARCHITEW6432" -ne "ARM64")
     }
 }
 
-Start-Transcript -Append "C:\ProgramData\IntuneMigration\post-migration.log" -Verbose
+$programData = $env:ALLUSERSPROFILE
+$localPath = "$($programData)\IntuneMigration"
+Start-Transcript -Append "$($localPath)\post-migration.log" -Verbose
 
 # Write BDE Key to AAD
 

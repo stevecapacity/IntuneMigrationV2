@@ -9,7 +9,8 @@ if ("$env:PROCESSOR_ARCHITEW6432" -ne "ARM64")
     }
 }
 
-$localPath = "C:\ProgramData\IntuneMigration"
+$programData = $env:ALLUSERSPROFILE
+$localPath = "$($programData)\IntuneMigration"
 
 $postMigrationLog = "$($localPath)\post-migration.log"
 Start-Transcript -Append $postMigrationLog -Verbose

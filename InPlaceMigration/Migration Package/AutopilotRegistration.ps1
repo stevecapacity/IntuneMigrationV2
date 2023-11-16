@@ -9,7 +9,10 @@ if ("$env:PROCESSOR_ARCHITEW6432" -ne "ARM64")
     }
 }
 
-Start-Transcript -Append "C:\ProgramData\IntuneMigration\post-migration.log" -Verbose
+$programData = $env:ALLUSERSPROFILE
+$localPath = "$($programData)\IntuneMigration"
+
+Start-Transcript -Append "$($localPath)\post-migration.log" -Verbose
 Write-Host "BEGIN LOGGING FOR AUTOPILOTREGISTRATION..."
 # Install for NUGET
 Install-PackageProvider -Name NuGet -Confirm:$false -Force
@@ -57,7 +60,7 @@ $ser = (Get-WmiObject win32_bios).SerialNumber
 if([string]::IsNullOrWhiteSpace($ser)) { $ser = $env:COMPUTERNAME}
 
 # Retrieve group tag info
-[xml]$memConfig = Get-Content "C:\ProgramData\IntuneMigration\config.xml"
+[xml]$memConfig = Get-Content "$($localPath)\config.xml"
 
 $tag = $memConfig.Config.GroupTag
 

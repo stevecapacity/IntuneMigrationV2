@@ -25,7 +25,8 @@ $ErrorActionPreference = 'SilentlyContinue'
 <# =================================================================================================#>
 
 #Copy necessary files from intunewin package to local PC
-$localPath = "C:\ProgramData\IntuneMigration"
+$programData = $env:ALLUSERSPROFILE
+$localPath = "$($programData)\IntuneMigration"
 
 if (!(Test-Path $localPath)) {
 	mkdir $localPath
@@ -95,13 +96,50 @@ Write-Host "MS Graph Authenticated"
 <# =================================================================================================#>
 #### IMPORT XML ####
 <# =================================================================================================#>
-[xml]$xmlFile = Get-Content -Path "$($localPath)\config.xml"
+# Check if premigrate was run or if migration is starting from StartMigrate
+$preMigrate = "$($localPath)\config.xml"
+if(Test-Path $preMigrate)
+{
+	Write-Host "Premigration process has run.  Importing device properties..."
+	[xml]$xmlFile = Get-Content -Path "$($localPath)\config.xml"
+	$config = $xmlFile.Config
+	$intuneID = $config.IntuneID
+	Write-Host "Intune ID is $($intuneID)"
+	$autopilotID = $config.AutopilotID
+	Write-Host "Autopilot ID is $($autopilotID)"
+	$migrateMethod = $config.MigrateMethod
+	$locations = $config.Locations.Location
+}
+else
+{
+	Write-Host "Premigration not run.  Gathering device info now..."
+	$serialNumber = Get-WmiObject -Class Win32_Bios | Select-Object -ExpandProperty serialNumber
+	$autopilotObject = Invoke-RestMethod -Method Get -Uri "https://graph.microsoft.com/beta/deviceManagement/windowsAutopilotDeviceIdentities?`$filter=contains(serialNumber,'$($serialNumber)')" -Headers $headers
+	$intuneObject = Invoke-RestMethod -Method Get -Uri "https://graph.microsoft.com/beta/deviceManagement/managedDevices?`$filter=contains(serialNumber,'$($serialNumber)')" -Headers $headers
+	$autopilotID = $autopilotObject.value.id
+	Write-Host "Autopilot ID is $($autopilotID)"
+	$intuneID = $intuneObject.value.id
+	Write-Host "Intune ID is $($intuneID)"
+	$groupTag = $autopilotObject.value.groupTag
+	Write-Host "Current Autopilot group tag is $($groupTag)"
+	$migrateMethod = "none"
+	$activeUserName = (Get-WmiObject -Class Win32_ComputerSystem | Select-Object username).username
+	$user = $activeUsername -replace '.*\\'
+	Write-Host "Current user is $($user)"
 
-$config = $xmlFile.Config
-
-$intuneID = $config.IntuneID
-$autopilotID = $config.AutopilotID
-
+	Write-Host "Creating local XML config file"
+	$xmlString = @"
+	<Config>
+	<GroupTag>$groupTag</GroupTag>
+	<User>$user</User>
+	<MigrateMethod>$migrateMethod</MigrateMethod>
+	<SerialNumber>$serialNumber</SerialNumber>
+"@
+	$xmlPath = "$($localPath)\config.xml"
+	New-Item $xmlPath -Force
+	Set-Content -Path $xmlPath -Value $xmlString
+	Write-Host "Set local content to $($xmlPath)"
+}
 <# =================================================================================================#>
 #### SET REQUIRED POLICY ####
 <# =================================================================================================#>
@@ -135,9 +173,6 @@ catch {
 #### USER DATA MIGRATION ####
 <# =================================================================================================#>
 Write-Host "Checking migration method..."
-
-$migrateMethod = $config.MigrateMethod
-$locations = $config.Locations.Location
 
 if($migrateMethod -eq "local")
 {
@@ -176,7 +211,6 @@ else
 {
 	Write-Host "User data will not be migrated"
 }
-
 <# =================================================================================================#>
 #### REMOVE PREVIOUS ENROLLMENT ARTIFICATS ####
 <# =================================================================================================#>

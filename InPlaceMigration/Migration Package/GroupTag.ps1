@@ -9,7 +9,10 @@ if ("$env:PROCESSOR_ARCHITEW6432" -ne "ARM64")
     }
 }
 
-Start-Transcript -Append "C:\ProgramData\IntuneMigration\post-migration.log" -Verbose
+$programData = $env:ALLUSERSPROFILE
+$localPath = "$($programData)\IntuneMigration"
+
+Start-Transcript -Append "$($localPath)\post-migration.log" -Verbose
 Write-Host "BEGIN LOGGING FOR GROUPTAG..."
 
 # Add Group Tag from Autopilot device in Tenant A to Azure AD object in Tenant B
@@ -50,7 +53,7 @@ Write-Host "MS Graph Authenticated"
 # Get tag and device info
 Write-Host "Retrieving info from local XML..."
 
-[xml]$memSettings = Get-Content "C:\ProgramData\IntuneMigration\MEM_Settings.xml"
+[xml]$memSettings = Get-Content "$($localPath)\config.xml"
 $memConfig = $memSettings.Config
 
 $oldTag = $memConfig.GroupTag

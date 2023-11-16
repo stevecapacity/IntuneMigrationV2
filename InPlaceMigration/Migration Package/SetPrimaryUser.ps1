@@ -8,8 +8,9 @@ if ("$env:PROCESSOR_ARCHITEW6432" -ne "ARM64")
         Exit $lastexitcode
     }
 }
-
-Start-Transcript -Append "C:\ProgramData\IntuneMigration\post-migration.log" -Verbose
+$programData = $env:ALLUSERSPROFILE
+$localPath = "$($programData)\IntuneMigration"
+Start-Transcript -Append "$($localPath)\post-migration.log" -Verbose
 
 $ErrorActionPreference = 'SilentlyContinue'
 Write-Host "BEGIN LOGGING FOR SETPRIMARYUSER..."
@@ -50,7 +51,7 @@ Write-Host "MS Graph Authenticated"
 
 #==============================================================================#
 # Get Device and user info
-[xml]$memSettings = Get-Content "C:\ProgramData\IntuneMigration\MEM_Settings.xml"
+[xml]$memSettings = Get-Content "$($localPath)\config.xml"
 $memConfig = $memSettings.Config
 
 $serialNumber = $memConfig.SerialNumber

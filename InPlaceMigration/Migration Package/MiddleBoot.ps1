@@ -9,7 +9,9 @@ if ("$env:PROCESSOR_ARCHITEW6432" -ne "ARM64")
     }
 }
 
-$postMigrationLog = "C:\ProgramData\IntuneMigration\post-migration.log"
+$programData = $env:ALLUSERSPROFILE
+$localPath = "$($programData)\IntuneMigration"
+$postMigrationLog = "$($localPath)\post-migration.log"
 Start-Transcript -Path $postMigrationLog -Verbose
 Write-Host "BEGIN LOGGING MIDDLEBOOT..."
 
@@ -18,7 +20,7 @@ Write-Host "BEGIN LOGGING MIDDLEBOOT..."
 
 # Get Tenant A user profile directory name from XML file
 Write-Host "Getting Tenant A user profile name"
-[xml]$memSettings = Get-Content -Path "C:\ProgramData\IntuneMigration\config.xml"
+[xml]$memSettings = Get-Content -Path "$($localPath)\config.xml"
 $memConfig = $memSettings.Config
 $user = $memConfig.User
 Write-Host "Current user directory name is C:\Users\$($user)"
