@@ -9,6 +9,15 @@ DeviceManagementManagedDevices.PrivilegedOperations.All
 DeviceManagementManagedDevices.ReadWrite.All
 DeviceManagementServiceConfig.ReadWrite.All
 #>
+# If we are running as a 32-bit process on an x64 system, re-launch as a 64-bit process
+if ("$env:PROCESSOR_ARCHITEW6432" -ne "ARM64")
+{
+    if (Test-Path "$($env:WINDIR)\SysNative\WindowsPowerShell\v1.0\powershell.exe")
+    {
+        & "$($env:WINDIR)\SysNative\WindowsPowerShell\v1.0\powershell.exe" -ExecutionPolicy bypass -NoProfile -File "$PSCommandPath"
+        Exit $lastexitcode
+    }
+}
 
 #// PRE-MIGRATE BACKUP SCRIPT SHOULD RUN AT A MINIMUM OF 10 DAYS PRIOR TO TENANT MIGRATION
 $ErrorActionPreference = 'SilentlyContinue'

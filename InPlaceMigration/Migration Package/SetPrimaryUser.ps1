@@ -1,4 +1,14 @@
 # Start and append post-migration log file
+# If we are running as a 32-bit process on an x64 system, re-launch as a 64-bit process
+if ("$env:PROCESSOR_ARCHITEW6432" -ne "ARM64")
+{
+    if (Test-Path "$($env:WINDIR)\SysNative\WindowsPowerShell\v1.0\powershell.exe")
+    {
+        & "$($env:WINDIR)\SysNative\WindowsPowerShell\v1.0\powershell.exe" -ExecutionPolicy bypass -NoProfile -File "$PSCommandPath"
+        Exit $lastexitcode
+    }
+}
+
 Start-Transcript -Append "C:\ProgramData\IntuneMigration\post-migration.log" -Verbose
 
 $ErrorActionPreference = 'SilentlyContinue'
