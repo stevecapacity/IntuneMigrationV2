@@ -126,6 +126,7 @@ else
 	<User>$user</User>
 	<MigrateMethod>$migrateMethod</MigrateMethod>
 	<SerialNumber>$serialNumber</SerialNumber>
+ 	</Config>
 "@
 	$xmlPath = "$($localPath)\config.xml"
 	New-Item $xmlPath -Force
