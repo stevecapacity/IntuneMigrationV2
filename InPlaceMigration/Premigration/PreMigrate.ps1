@@ -247,17 +247,15 @@ if($freeSpace -gt $localRequiredSpace)
     Write-Host "$($freeSpaceGB) of free space is sufficient to transfer $($totalProfileSizeGB) of $($user) data locally."
     foreach($location in $locations)
     {   
+        $userLocation = "C:\Users\$($user)\$($location)"
+        $backupLocation = "C:\Users\Public\Temp\$($location)"
+        if(!(Test-Path $backupLocation))
         {
-            $userLocation = "C:\Users\$($user)\$($location)"
-            $backupLocation = "C:\Users\Public\Temp\$($location)"
-            if(!(Test-Path $backupLocation))
-            {
-                mkdir $backupLocation
-            }
-            Write-Host "Initiating backup of $($userLocation)"
-            robocopy $userLocation $backupLocation /E /ZB /R:0 /W:0 /V /XJ /FFT /XD $aadBrokerPath
-            Write-Host "$($userLocation) backed up to $($backupLocation)"    
+            mkdir $backupLocation
         }
+        Write-Host "Initiating backup of $($userLocation)"
+        robocopy $userLocation $backupLocation /E /ZB /R:0 /W:0 /V /XJ /FFT /XD $aadBrokerPath
+        Write-Host "$($userLocation) backed up to $($backupLocation)"    
     }
 }
 # Try blob backup
